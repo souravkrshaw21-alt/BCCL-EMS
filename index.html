@@ -24,461 +24,566 @@
 </head>
 <body class="bg-gray-50 font-sans text-gray-700">
   <div id="root" class="h-screen flex flex-col">Loading...</div>
+
 <script type="text/babel">
-  const { useState, useEffect } = React;
+const { useState, useEffect } = React;
 
-  // Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyCm__tUZQ306quXAW6vbN7PsGGtYuttLik",
-    authDomain: "bccl-ems-1826f.firebaseapp.com",
-    projectId: "bccl-ems-1826f",
-    storageBucket: "bccl-ems-1826f.firebasestorage.app",
-    messagingSenderId: "863769805844",
-    appId: "1:863769805844:web:a950f3160877b6c96e9301"
-  };
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+// FIREBASE SETUP
+const firebaseConfig = {
+  apiKey: "AIzaSyCm__tUZQ306quXAW6vbN7PsGGtYuttLik",
+  authDomain: "bccl-ems-1826f.firebaseapp.com",
+  projectId: "bccl-ems-1826f",
+  storageBucket: "bccl-ems-1826f.firebasestorage.app",
+  messagingSenderId: "863769805844",
+  appId: "1:863769805844:web:a950f3160877b6c96e9301"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-  // Utility
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+// --- LOGO ---
+function BCCLCircleLogo({ size = 64 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-label="BCCL Logo" role="img">
+      <circle cx="32" cy="32" r="30" stroke="black" strokeWidth="3" fill="white" />
+      <text x="32" y="38" textAnchor="middle" fontSize="22" fontWeight="bold" fill="black" fontFamily="sans-serif">BCCL</text>
+    </svg>
+  );
+}
 
-  // --- BCCL Logo ---
-  function BCCLCircleLogo({ size = 64 }) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-label="BCCL Logo" role="img">
-        <circle cx="32" cy="32" r="30" stroke="black" strokeWidth="3" fill="white" />
-        <text x="32" y="38" textAnchor="middle" fontSize="22" fontWeight="bold" fill="black" fontFamily="sans-serif">BCCL</text>
-      </svg>
-    );
-  }
-
-  // --- BCCL Info Section ---
-  function BCCLInfo() {
-    return (
-      <div className="bg-white rounded-lg shadow p-8 mt-10 max-w-7xl mx-auto">
-        {/* header and sections omitted for brevity, as above */}
-        <header className="bg-gradient-to-r from-teal-900 to-teal-700 text-white p-10 rounded-t-lg text-center mb-8">
-          <h1 className="text-4xl font-bold">Bharat Coking Coal Limited (BCCL)</h1>
-          <p className="text-lg mt-2">Subsidiary of Coal India Limited – Leading Producer of Coking Coal</p>
-        </header>
-        {/* ... rest from previous BCCLInfo code ... */}
-        {/* [boxed for brevity, but paste the full BCCLInfo JSX from previous version] */}
-      </div>
-    );
-  }
-
-  // --- Employees Section ---
-  function Employees({ employees, setEmployees }) {
-    const [form, setForm] = useState({ name: "", email: "", department: "" });
-    const [error, setError] = useState("");
-    const [editId, setEditId] = useState(null);
-
-    // Fetch employees on mount
-    useEffect(() => {
-      db.collection("employees").get().then(snapshot => {
-        const emps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setEmployees(emps);
-      });
-    }, []);
-
-    const handleSave = async () => {
-      setError("");
-      const { name, email, department } = form;
-      if (!name.trim() || !email.trim() || !department.trim()) {
-        setError("All fields are required."); return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) { setError("Invalid email."); return; }
-      // Check duplicate
-      if (employees.find(e => e.email.toLowerCase() === email.toLowerCase() && (!editId || e.id !== editId))) {
-        setError("Email already exists."); return;
-      }
-      if (editId) {
-        await db.collection("employees").doc(editId).set({ name, email, department });
-      } else {
-        await db.collection("employees").add({ name, email, department });
-      }
-      setForm({ name:"", email:"", department:"" }); setEditId(null);
-      // Reload
-      const snapshot = await db.collection("employees").get();
-      setEmployees(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
-    };
-
-    const handleEdit = emp => {
-      setForm({ name: emp.name, email: emp.email, department: emp.department });
-      setEditId(emp.id);
-    };
-
-    const handleDelete = async id => {
-      if (window.confirm("Delete employee?")) {
-        await db.collection("employees").doc(id).delete();
-        const snapshot = await db.collection("employees").get();
-        setEmployees(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
-      }
-    };
-
-    return (
-      <section className="p-8 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6">Manage Employees</h2>
-        <div className="bg-white p-6 rounded shadow mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Name" className="p-3 border rounded"/>
-            <input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="Email" className="p-3 border rounded"/>
-            <input value={form.department} onChange={e=>setForm({...form,department:e.target.value})} placeholder="Department" className="p-3 border rounded"/>
-          </div>
-          {error && <p className="text-red-600 mt-3">{error}</p>}
-          <div className="mt-4 flex gap-3">
-            <button onClick={handleSave} className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
-              {editId ? "Save Changes" : "Add Employee"}
-            </button>
-            {editId && (
-              <button onClick={() => { setForm({ name:"", email:"", department:"" }); setEditId(null); }} className="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500">
-                Cancel
-              </button>
-            )}
-          </div>
-        </div>
-        <table className="w-full border border-gray-300">
-          <thead className="bg-blue-100">
-            <tr>
-              <th className="border px-4 py-2 text-left">Name</th>
-              <th className="border px-4 py-2 text-left">Email</th>
-              <th className="border px-4 py-2 text-left">Department</th>
-              <th className="border px-4 py-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map(e=>(
-              <tr key={e.id} className="hover:bg-blue-50">
-                <td className="border px-4 py-2">{e.name}</td>
-                <td className="border px-4 py-2">{e.email}</td>
-                <td className="border px-4 py-2">{e.department}</td>
-                <td className="border px-4 py-2 text-center space-x-2">
-                  <button onClick={()=>handleEdit(e)} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600">Edit</button>
-                  <button onClick={()=>handleDelete(e.id)} className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Delete</button>
-                </td>
-              </tr>
-            ))}
-            {employees.length===0 && (
-              <tr><td colSpan="4" className="text-center p-6 text-gray-400">No employees.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-    );
-  }
-
-  // --- Grievances Section ---
-  function Grievances({ user, grievances, setGrievances }) {
-    const [complaint, setComplaint] = useState("");
-    const [error, setError] = useState("");
-    const isAdmin = user.role === "admin";
-    // Fetch grievances
-    useEffect(() => {
-      db.collection("grievances").get().then(snapshot => {
-        const grvs = snapshot.docs.map(doc=>({ id: doc.id, ...doc.data() }));
-        setGrievances(grvs);
-      });
-    }, []);
-
-    const handleSubmit = async () => {
-      if (!complaint.trim()) { setError("Complaint cannot be empty."); return; }
-      const today = new Date().toISOString().split('T')[0];
-      await db.collection("grievances").add({ by: user.name, text: complaint, status: "Pending", date: today });
-      setComplaint("");
-      // Reload
-      const snapshot = await db.collection("grievances").get();
-      setGrievances(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
-    };
-
-    const handleResolve = async id => {
-      await db.collection("grievances").doc(id).update({ status: "Resolved" });
-      const snapshot = await db.collection("grievances").get();
-      setGrievances(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
-    };
-
-    return (
-      <section className="p-8 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6">Grievances</h2>
-        {!isAdmin && (
-          <div className="mb-6 bg-white p-6 rounded shadow">
-            <textarea value={complaint} onChange={e=>setComplaint(e.target.value)} placeholder="Enter your complaint..." className="w-full p-3 border rounded mb-3" rows={4}/>
-            {error && <p className="text-red-600 mb-2">{error}</p>}
-            <button onClick={handleSubmit} className="bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-800">Submit</button>
-          </div>
-        )}
-        <table className="w-full border border-gray-300">
-          <thead className="bg-blue-100">
-            <tr>
-              <th className="border px-4 py-2">Employee</th>
-              <th className="border px-4 py-2">Complaint</th>
-              <th className="border px-4 py-2">Status</th>
-              <th className="border px-4 py-2">Date</th>
-              {isAdmin && <th className="border px-4 py-2">Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {grievances.map(g=>(
-              <tr key={g.id}>
-                <td className="border px-4 py-2">{g.by}</td>
-                <td className="border px-4 py-2">{g.text}</td>
-                <td className="border px-4 py-2">{g.status}</td>
-                <td className="border px-4 py-2">{g.date ? new Date(g.date).toLocaleDateString() : ""}</td>
-                {isAdmin && (
-                  <td className="border px-4 py-2 text-center">
-                    {g.status === "Pending"
-                      ? <button onClick={()=>handleResolve(g.id)} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Resolve</button>
-                      : "✅"}
-                  </td>
-                )}
-              </tr>
-            ))}
-            {grievances.length===0 && (
-              <tr><td colSpan={isAdmin?5:4} className="text-center p-6 text-gray-400">No grievances.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-    );
-  }
-
-  // --- Notices Section (admin only can add) ---
-  function Notices({ user }) {
-    const [notices, setNotices] = useState([]);
-    const [title, setTitle] = useState("");
-    const [date, setDate] = useState("");
-    const [description, setDescription] = useState("");
-    const [error, setError] = useState("");
-    const isAdmin = user.role === "admin";
-
-    // Read
-    useEffect(() => {
-      db.collection("notices").get().then(snapshot => {
-        const nts = snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
-        setNotices(nts);
-      });
-    }, []);
-
-    const handleAdd = async () => {
-      setError("");
-      if (!title.trim() || !date.trim() || !description.trim()) {
-        setError("All fields are required.");
-        return;
-      }
-      await db.collection("notices").add({ title, date, description });
-      setTitle(""); setDate(""); setDescription("");
-      // Reload
-      const snapshot = await db.collection("notices").get();
-      setNotices(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
-    };
-
-    return (
-      <section className="p-8 max-w-7xl mx-auto overflow-auto">
-        <h2 className="text-3xl font-bold mb-6 text-center text-blue-900">Notices & Announcements</h2>
-        {isAdmin && (
-          <div className="mb-8 bg-white p-6 rounded shadow">
-            <h3 className="text-xl font-semibold mb-4">Add New Notice</h3>
-            <input type="text" placeholder="Title" value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-3 mb-3 border rounded"/>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full p-3 mb-3 border rounded"/>
-            <textarea placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} rows={4} className="w-full p-3 mb-3 border rounded"/>
-            {error && <p className="text-red-600 mb-3">{error}</p>}
-            <button onClick={handleAdd} className="bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-800">Add Notice</button>
-          </div>
-        )}
-        {notices.length === 0 ? (
-          <p className="text-center text-gray-500">No notices available.</p>
-        ) : (
-          <ul className="space-y-6">
-            {notices.map(({id,title,date,description}) => (
-              <li key={id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
-                <h3 className="text-xl font-semibold text-teal-800">{title}</h3>
-                <p className="text-sm text-gray-500 mb-2">{date ? new Date(date).toLocaleDateString() : ""}</p>
-                <p>{description}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    );
-  }
-
-  // --- Contacts Section ---
-  function Contacts() {
-    // ... (same as previous version, since contacts don't change)
-    // [Paste full Contacts component code]
-    return (<section><h2 className="text-3xl font-bold mb-6 text-center text-blue-900">Contact | Important Phone Nos. & E-mail IDs</h2>{/* ... rest ... */}</section>);
-  }
-
-  function Footer() {
-    return (
-      <footer className="bg-blue-900 text-blue-300 text-center py-4 text-sm" role="contentinfo">
-        © {new Date().getFullYear()} BCCL. All rights reserved.
-      </footer>
-    );
-  }
-
-  function HeaderBar({ user }) {
-    return (
-      <header className="bg-white border-b px-6 py-3 flex items-center" role="banner">
-        <h1 className="text-2xl font-extrabold text-blue-900">Welcome to BCCL EMS</h1>
-        <div className="ml-auto" aria-label="Logged in user">
-          User: {user.role === "admin" ? "Administrator" : user.name}
-        </div>
+// --- BCCL INFO FOR DASHBOARD ---
+function BCCLInfo() {
+  return (
+    <div className="bg-white rounded-lg shadow p-8 mt-10 max-w-7xl mx-auto">
+      <header className="bg-gradient-to-r from-teal-900 to-teal-700 text-white p-10 rounded-t-lg text-center mb-8">
+        <h1 className="text-4xl font-bold">Bharat Coking Coal Limited (BCCL)</h1>
+        <p className="text-lg mt-2">Subsidiary of Coal India Limited – Leading Producer of Coking Coal</p>
       </header>
-    );
-  }
-
-  function StatCard({ title, stat, icon }) {
-    return (
-      <div className="bg-white rounded shadow p-6 flex gap-6" role="region" aria-label={title}>
-        <div className="text-4xl" aria-hidden="true">{icon}</div>
-        <div>
-          <p className="text-sm text-gray-500">{title}</p>
-          <p className="text-2xl font-bold">{stat}</p>
+      <section className="mb-12">
+        <h2 className="text-3xl font-semibold text-teal-900 text-center mb-6 relative after:block after:w-16 after:h-1 after:bg-teal-700 after:rounded after:mx-auto after:mt-2">
+          About BCCL
+        </h2>
+        <p className="max-w-xl mx-auto text-center text-gray-700">
+          Bharat Coking Coal Limited (BCCL) is a subsidiary of Coal India Limited, engaged primarily in mining coking coal 
+          from the Jharia and Raniganj coalfields in Jharkhand and West Bengal. BCCL plays a crucial role in supplying 
+          high-quality coal for steel production and energy generation.
+        </p>
+      </section>
+      <section className="bg-teal-50 p-8 rounded-lg mb-12">
+        <h2 className="text-3xl font-semibold text-teal-900 text-center mb-6 relative after:block after:w-16 after:h-1 after:bg-teal-700 after:rounded after:mx-auto after:mt-2">
+          Our Products &amp; Services
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition transform hover:-translate-y-1 text-center">
+            <i className="fas fa-fire text-5xl text-teal-700 mb-4" aria-hidden="true"></i>
+            <h3 className="text-xl font-semibold mb-2">Coking Coal</h3>
+            <p>High-grade coking coal suitable for metallurgical industries and steel production.</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition transform hover:-translate-y-1 text-center">
+            <i className="fas fa-industry text-5xl text-teal-700 mb-4" aria-hidden="true"></i>
+            <h3 className="text-xl font-semibold mb-2">Non-Coking Coal</h3>
+            <p>Used mainly in power generation and various industrial processes.</p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition transform hover:-translate-y-1 text-center">
+            <i className="fas fa-layer-group text-5xl text-teal-700 mb-4" aria-hidden="true"></i>
+            <h3 className="text-xl font-semibold mb-2">Washed Coal</h3>
+            <p>Coal processed to reduce impurities and improve quality for industrial use.</p>
+          </div>
         </div>
+      </section>
+      <section className="mb-12">
+        <h2 className="text-3xl font-semibold text-teal-900 text-center mb-6 relative after:block after:w-16 after:h-1 after:bg-teal-700 after:rounded after:mx-auto after:mt-2">
+          Careers &amp; Recruitment
+        </h2>
+        <p className="max-w-xl mx-auto text-center text-gray-700 mb-6">
+          BCCL provides a wide range of career opportunities in mining, engineering, and administration. Stay updated 
+          with our latest job openings and recruitment notifications.
+        </p>
+        <div className="text-center">
+          <a href="https://bcclweb.in/?page_id=4097" target="_blank" rel="noopener noreferrer"
+            className="inline-block bg-teal-700 hover:bg-teal-900 text-white font-semibold py-3 px-6 rounded transition">
+            Explore Careers
+          </a>
+        </div>
+      </section>
+      <section className="bg-teal-50 p-8 rounded-lg">
+        <h2 className="text-3xl font-semibold text-teal-900 text-center mb-6 relative after:block after:w-16 after:h-1 after:bg-teal-700 after:rounded after:mx-auto after:mt-2">
+          Contact Us
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center text-gray-700">
+          <div className="bg-white rounded-md p-6 shadow hover:shadow-lg transition">
+            <i className="fas fa-map-marker-alt text-4xl text-teal-700 mb-3" aria-hidden="true"></i>
+            <h3 className="text-xl font-semibold mb-1">Head Office</h3>
+            <p>Bharat Coking Coal Limited,<br/> Koyla Bhawan, Koyla Nagar, Dhanbad-826005</p>
+            <p>CIN-U10101JH1972GOI000918</p>
+          </div>
+          <div className="bg-white rounded-md p-6 shadow hover:shadow-lg transition">
+            <i className="fas fa-phone text-4xl text-teal-700 mb-3" aria-hidden="true"></i>
+            <h3 className="text-xl font-semibold mb-1">Contact No.</h3>
+            <p>STD Code: 0326<br/>
+              EPABX Nos.: 2230028, 2230133-149
+            </p>
+          </div>
+          <div className="bg-white rounded-md p-6 shadow hover:shadow-lg transition">
+            <i className="fas fa-globe text-4xl text-teal-700 mb-3" aria-hidden="true"></i>
+            <h3 className="text-xl font-semibold mb-1">Website</h3>
+            <a href="https://www.bcclweb.in" target="_blank" className="text-blue-800 underline">www.bcclweb.in</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// --- CONTACTS: includes earlier info as static table below ---
+function Contacts() {
+  const contacts = [
+    { name: "Samiran Dutta", designation: "CMD", office: "2230112", email: "cmd.bccl.cil@coalindia.in" },
+    { name: "Murli Krishna Ramaiah", designation: "D(HR)", office: "2230170", email: "dp.bccl.cil@coalindia.in" },
+    { name: "Sanjay Kumar Singh", designation: "DT(OP)", office: "2230163", email: "dtop.bccl.cil@coalindia.in" },
+    { name: "Manoj Kumar Agarwal", designation: "DT(P&P)", office: "2230159", email: "dtpp.bccl.cil@coalindia.in" },
+    { name: "Rakesh Kumar Sahay", designation: "D(F)", office: "2230167", email: "df.bccl.cil@coalindia.in" },
+    { name: "Aman Raj", designation: "CVO", office: "2230171", email: "cvo.bccl@coalindia.in" },
+    { name: "Rajeev Sinha", designation: "TS to CMD", office: "6223", email: "tscmd.bccl.cil@coalindia.in" },
+    { name: "S.K.Singh", designation: "TS to D(T) OP", office: "6564", email: "tstodtop.bccl@coalindia.in" },
+    { name: "Ful Jha", designation: "TS to D(T) P&P", office: "6272", email: "tstodirpp.bccl@coalindia.in" },
+    { name: "Sri Om Prakash Singh", designation: "TS to D(HR)", office: "6247", email: "tsdp.bccl@coalindia.in" },
+    { name: "Naveen Thakur", designation: "TS to CVO", office: "6206", email: "tscvo.bccl@coalindia.in" },
+  ];
+
+  return (
+    <section className="p-8 max-w-7xl mx-auto overflow-auto">
+      <h2 className="text-3xl font-bold mb-6 text-center text-blue-900">Contact | Important Phone Nos. & E-mail IDs</h2>
+      <div className="mb-6 text-center text-gray-700 max-w-xl mx-auto">
+        <p><strong>Address:</strong> Bharat Coking Coal Limited, Koyla Bhawan, Koyla Nagar, Dhanbad-826005</p>
+        <p><strong>CIN:</strong> U10101JH1972GOI000918</p>
+        <p><strong>Website:</strong> <a href="https://www.bcclweb.in" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">www.bcclweb.in</a></p>
+        <p><strong>Contact No.:</strong> STD Code: 0326 | EPABX Nos.: 2230028, 2230133-149</p>
       </div>
-    );
-  }
+      <table className="w-full border border-gray-300 text-left rounded shadow-sm">
+        <thead className="bg-blue-100">
+          <tr>
+            <th className="p-3 border-b border-gray-300">Name</th>
+            <th className="p-3 border-b border-gray-300">Designation</th>
+            <th className="p-3 border-b border-gray-300">Office No.</th>
+            <th className="p-3 border-b border-gray-300">Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          {contacts.map(({name, designation, office, email}, idx) => (
+            <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+              <td className="p-3 border-b border-gray-300">{name}</td>
+              <td className="p-3 border-b border-gray-300">{designation}</td>
+              <td className="p-3 border-b border-gray-300">{office}</td>
+              <td className="p-3 border-b border-gray-300">
+                <a href={"mailto:" + email} className="text-blue-700 hover:underline">{email}</a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
 
-  function Dashboard({ employees, grievances }) {
-    const totalEmps = employees.length;
-    const totalGrievances = grievances.length;
-    const resolved = grievances.filter(g => g.status === "Resolved").length;
+// --- NOTICES ---
+function Notices({ user }) {
+  const [notices, setNotices] = useState([]);
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
 
-    return (
-      <section className="p-8 max-w-7xl mx-auto overflow-auto" tabIndex={-1}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6" role="list">
-          <StatCard title="Total Employees" stat={totalEmps} icon="👥" />
-          <StatCard title="Total Grievances" stat={totalGrievances} icon="📝" />
-          <StatCard title="Resolved Grievances" stat={resolved} icon="✅" />
+  const isAdmin = user.role === "admin";
+  useEffect(() => {
+    db.collection("notices").orderBy("date", "desc").onSnapshot(snapshot => {
+      setNotices(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
+    });
+  }, []);
+
+  const handleAdd = async () => {
+    setError("");
+    if (!title.trim() || !date.trim() || !description.trim()) {
+      setError("All fields are required.");
+      return;
+    }
+    await db.collection("notices").add({ title, date, description });
+    setTitle(""); setDate(""); setDescription("");
+  };
+
+  return (
+    <section className="p-8 max-w-7xl mx-auto overflow-auto">
+      <h2 className="text-3xl font-bold mb-6 text-center text-blue-900">Notices & Announcements</h2>
+      {isAdmin && (
+        <div className="mb-8 bg-white p-6 rounded shadow">
+          <h3 className="text-xl font-semibold mb-4">Add New Notice</h3>
+          <input type="text" placeholder="Title" value={title} onChange={e=>setTitle(e.target.value)} className="w-full p-3 mb-3 border rounded"/>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full p-3 mb-3 border rounded"/>
+          <textarea placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} rows={4} className="w-full p-3 mb-3 border rounded"/>
+          {error && <p className="text-red-600 mb-3">{error}</p>}
+          <button onClick={handleAdd} className="bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-800">Add Notice</button>
         </div>
-        <BCCLInfo />
+      )}
+      {notices.length === 0 ? (
+        <p className="text-center text-gray-500">No notices available.</p>
+      ) : (
+        <ul className="space-y-6">
+          {notices.map(({id,title,date,description}) => (
+            <li key={id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+              <h3 className="text-xl font-semibold text-teal-800">{title}</h3>
+              <p className="text-sm text-gray-500 mb-2">{date ? new Date(date).toLocaleDateString() : ""}</p>
+              <p>{description}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// --- EMPLOYEES ---
+function Employees({ employees, setEmployees, user }) {
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({ name: "", email: "", department: "" });
+  const [error, setError] = useState("");
+  const isAdmin = user.role === "admin";
+
+  // Fetch employees on mount
+  useEffect(() => {
+    db.collection("employees").onSnapshot(snapshot => {
+      setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+  }, []);
+
+  const personalInfo = employees.find(
+    e => e.email.toLowerCase() === (user.email || "").toLowerCase()
+  );
+
+  const handleSave = async () => {
+    setError("");
+    const { name, email, department } = form;
+    if (!name.trim() || !email.trim() || !department.trim()) {
+      setError("All fields are required."); return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) { setError("Invalid email."); return; }
+    if (employees.find(e => e.email.toLowerCase() === email.toLowerCase() && (!editId || e.id !== editId))) {
+      setError("Email already exists."); return;
+    }
+    if (editId) {
+      await db.collection("employees").doc(editId).set({ name, email, department });
+    } else {
+      await db.collection("employees").add({ name, email, department });
+    }
+    setForm({ name:"", email:"", department:"" }); setEditId(null);
+  };
+
+  const handleEdit = emp => {
+    setForm({ name: emp.name, email: emp.email, department: emp.department });
+    setEditId(emp.id);
+  };
+
+  const handleDelete = async id => {
+    if (window.confirm("Delete employee?")) {
+      await db.collection("employees").doc(id).delete();
+    }
+  };
+
+  // EMPLOYEE SEES ONLY THEIR OWN INFO
+  if (!isAdmin && personalInfo) {
+    return (
+      <section className="p-8 max-w-2xl mx-auto">
+        <h2 className="text-2xl font-bold mb-6">Your Information</h2>
+        <div className="bg-white rounded shadow p-6">
+          <div className="mb-3"><b>Name:</b> {personalInfo.name}</div>
+          <div className="mb-3"><b>Email:</b> {personalInfo.email}</div>
+          <div className="mb-3"><b>Department:</b> {personalInfo.department}</div>
+        </div>
       </section>
     );
   }
 
-  function Login({ onLogin, employees, admin }) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-
-    const handleLogin = () => {
-      setError("");
-      if (!email.trim() || !password.trim()) {
-        setError("Email and password are required.");
-        return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        setError("Invalid email format.");
-        return;
-      }
-      if (email === admin.email && password === admin.password) {
-        onLogin({ role: "admin", email });
-        return;
-      }
-      const emp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
-      if (emp && password.toLowerCase() === emp.name.toLowerCase()) {
-        onLogin({ role: "employee", email, name: emp.name });
-      } else {
-        setError("Invalid credentials.");
-      }
-    };
-
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-blue-900 to-blue-600 p-6">
-        <div className="bg-white p-10 rounded-lg shadow-xl max-w-md w-full">
-          <div className="flex items-center mb-6">
-            <BCCLCircleLogo size={56} />
-            <div className="ml-4">
-              <h1 className="text-2xl font-bold text-blue-900">Bharat Coking Coal Limited</h1>
-              <p className="text-gray-600 font-semibold">Employee Management System</p>
-            </div>
-          </div>
-          <input type="email" placeholder="Email" value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-600" aria-label="Email"/>
-          <input type="password" placeholder="Password / Name" value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-600" aria-label="Password or Name"/>
-          {error && <p className="text-red-600 mb-4" role="alert">{error}</p>}
-          <button onClick={handleLogin}
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-md text-lg font-semibold" aria-label="Login button">
-            Login
+  // ADMIN: regular edit interface
+  return (
+    <section className="p-8 max-w-7xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6">Manage Employees</h2>
+      <div className="bg-white p-6 rounded shadow mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Name" className="p-3 border rounded"/>
+          <input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="Email" className="p-3 border rounded"/>
+          <input value={form.department} onChange={e=>setForm({...form,department:e.target.value})} placeholder="Department" className="p-3 border rounded"/>
+        </div>
+        {error && <p className="text-red-600 mt-3">{error}</p>}
+        <div className="mt-4 flex gap-3">
+          <button onClick={handleSave} className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+            {editId ? "Save Changes" : "Add Employee"}
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  function Sidebar({ tab, setTab, user, onLogout }) {
-    const isAdmin = user.role === "admin";
-    const menuItems = [
-      { id: "dashboard", label: "Dashboard", icon: "🏠" },
-      ...(isAdmin ? [{ id: "employees", label: "Employees", icon: "👥" }] : []),
-      { id: "grievances", label: "Grievances", icon: "📝" },
-      { id: "notices", label: "Notices", icon: "📣" },  // Notices above Contacts
-      { id: "contacts", label: "Contacts", icon: "📞" }
-    ];
-    return (
-      <aside className="w-72 bg-blue-900 text-white flex flex-col h-full" role="navigation" aria-label="Main menu">
-        <div className="p-6 flex flex-col items-center border-b border-blue-800">
-          <BCCLCircleLogo size={64} />
-          <h2 className="text-lg font-bold mt-2">BCCL EMS</h2>
-        </div>
-        <nav className="flex-1">
-          {menuItems.map(item => (
-            <button key={item.id} onClick={() => setTab(item.id)}
-              aria-current={tab === item.id ? "page" : undefined}
-              className={`w-full flex items-center gap-3 px-6 py-3 hover:bg-blue-800 ${
-                tab === item.id ? "bg-blue-700 font-semibold" : ""}`}>
-              <span aria-hidden="true">{item.icon}</span> {item.label}
+          {editId && (
+            <button onClick={() => { setForm({ name:"", email:"", department:"" }); setEditId(null); }} className="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500">
+              Cancel
             </button>
-          ))}
-        </nav>
-        <div className="p-6 border-t border-blue-800">
-          <button onClick={onLogout} className="w-full py-2 bg-red-600 rounded hover:bg-red-700" aria-label="Logout button">
-            Logout
-          </button>
-        </div>
-      </aside>
-    );
-  }
-
-  function App() {
-    const admin = { email: "sourav.kumar@bccl.in", password: "Admin@123" };
-    const [user, setUser] = useState(null);
-    const [employees, setEmployees] = useState([]);
-    const [grievances, setGrievances] = useState([]);
-    const [tab, setTab] = useState("dashboard");
-    // Pass employees to login for user match
-    useEffect(() => {
-      db.collection("employees").get().then(snapshot => {
-        setEmployees(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
-      });
-    }, []);
-    if (!user) return <Login onLogin={setUser} employees={employees} admin={admin} />;
-
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
-        <div className="flex flex-col flex-grow">
-          <HeaderBar user={user} />
-          <main className="flex-grow overflow-auto bg-gray-50">
-            {tab === "dashboard" && <Dashboard employees={employees} grievances={grievances} />}
-            {tab === "employees" && user.role === "admin" && <Employees employees={employees} setEmployees={setEmployees} />}
-            {tab === "grievances" && <Grievances user={user} grievances={grievances} setGrievances={setGrievances} />}
-            {tab === "notices" && <Notices user={user} />}
-            {tab === "contacts" && <Contacts />}
-          </main>
-          <Footer />
+          )}
         </div>
       </div>
-    );
-  }
+      <table className="w-full border border-gray-300">
+        <thead className="bg-blue-100">
+          <tr>
+            <th className="border px-4 py-2 text-left">Name</th>
+            <th className="border px-4 py-2 text-left">Email</th>
+            <th className="border px-4 py-2 text-left">Department</th>
+            <th className="border px-4 py-2 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {employees.map(e=>(
+            <tr key={e.id} className="hover:bg-blue-50">
+              <td className="border px-4 py-2">{e.name}</td>
+              <td className="border px-4 py-2">{e.email}</td>
+              <td className="border px-4 py-2">{e.department}</td>
+              <td className="border px-4 py-2 text-center space-x-2">
+                <button onClick={()=>handleEdit(e)} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600">Edit</button>
+                <button onClick={()=>handleDelete(e.id)} className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Delete</button>
+              </td>
+            </tr>
+          ))}
+          {employees.length===0 && (
+            <tr><td colSpan="4" className="text-center p-6 text-gray-400">No employees.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
 
-  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+// --- GRIEVANCES SECTION ---
+function Grievances({ user, grievances, setGrievances }) {
+  const [complaint, setComplaint] = useState("");
+  const [error, setError] = useState("");
+  const isAdmin = user.role === "admin";
+  useEffect(() => {
+    db.collection("grievances").onSnapshot(snapshot => {
+      setGrievances(snapshot.docs.map(doc=>({ id:doc.id, ...doc.data() })));
+    });
+  }, []);
+  const handleSubmit = async () => {
+    if (!complaint.trim()) { setError("Complaint cannot be empty."); return; }
+    const today = new Date().toISOString().split('T')[0];
+    await db.collection("grievances").add({ by: user.name, text: complaint, status: "Pending", date: today });
+    setComplaint("");
+  };
+  const handleResolve = async id => {
+    await db.collection("grievances").doc(id).update({ status: "Resolved" });
+  };
+  return (
+    <section className="p-8 max-w-7xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6">Grievances</h2>
+      {!isAdmin && (
+        <div className="mb-6 bg-white p-6 rounded shadow">
+          <textarea value={complaint} onChange={e=>setComplaint(e.target.value)} placeholder="Enter your complaint..." className="w-full p-3 border rounded mb-3" rows={4}/>
+          {error && <p className="text-red-600 mb-2">{error}</p>}
+          <button onClick={handleSubmit} className="bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-800">Submit</button>
+        </div>
+      )}
+      <table className="w-full border border-gray-300">
+        <thead className="bg-blue-100">
+          <tr>
+            <th className="border px-4 py-2">Employee</th>
+            <th className="border px-4 py-2">Complaint</th>
+            <th className="border px-4 py-2">Status</th>
+            <th className="border px-4 py-2">Date</th>
+            {isAdmin && <th className="border px-4 py-2">Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {grievances.map(g=>(
+            <tr key={g.id}>
+              <td className="border px-4 py-2">{g.by}</td>
+              <td className="border px-4 py-2">{g.text}</td>
+              <td className="border px-4 py-2">{g.status}</td>
+              <td className="border px-4 py-2">{g.date ? new Date(g.date).toLocaleDateString() : ""}</td>
+              {isAdmin && (
+                <td className="border px-4 py-2 text-center">
+                  {g.status === "Pending"
+                    ? <button onClick={()=>handleResolve(g.id)} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Resolve</button>
+                    : "✅"}
+                </td>
+              )}
+            </tr>
+          ))}
+          {grievances.length===0 && (
+            <tr><td colSpan={isAdmin?5:4} className="text-center p-6 text-gray-400">No grievances.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+// --- FOOTER ---
+function Footer() {
+  return (
+    <footer className="bg-blue-900 text-blue-300 text-center py-4 text-sm" role="contentinfo">
+      © {new Date().getFullYear()} BCCL. All rights reserved.
+    </footer>
+  );
+}
+
+function HeaderBar({ user }) {
+  return (
+    <header className="bg-white border-b px-6 py-3 flex items-center" role="banner">
+      <h1 className="text-2xl font-extrabold text-blue-900">Welcome to BCCL EMS</h1>
+      <div className="ml-auto" aria-label="Logged in user">
+        User: {user.role === "admin" ? "Administrator" : user.name}
+      </div>
+    </header>
+  );
+}
+
+function StatCard({ title, stat, icon }) {
+  return (
+    <div className="bg-white rounded shadow p-6 flex gap-6" role="region" aria-label={title}>
+      <div className="text-4xl" aria-hidden="true">{icon}</div>
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-2xl font-bold">{stat}</p>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ employees, grievances }) {
+  const totalEmps = employees.length;
+  const totalGrievances = grievances.length;
+  const resolved = grievances.filter(g => g.status === "Resolved").length;
+
+  return (
+    <section className="p-8 max-w-7xl mx-auto overflow-auto" tabIndex={-1}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6" role="list">
+        <StatCard title="Total Employees" stat={totalEmps} icon="👥" />
+        <StatCard title="Total Grievances" stat={totalGrievances} icon="📝" />
+        <StatCard title="Resolved Grievances" stat={resolved} icon="✅" />
+      </div>
+      <BCCLInfo />
+    </section>
+  );
+}
+
+function Login({ onLogin, employees, admin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleLogin = () => {
+    setError("");
+    if (!email.trim() || !password.trim()) {
+      setError("Email and password are required."); return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) { setError("Invalid email format."); return; }
+    if (email === admin.email && password === admin.password) {
+      onLogin({ role: "admin", email }); return;
+    }
+    const emp = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+    if (emp && password.toLowerCase() === emp.name.toLowerCase()) {
+      onLogin({ role: "employee", email, name: emp.name });
+    } else {
+      setError("Invalid credentials.");
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-blue-900 to-blue-600 p-6">
+      <div className="bg-white p-10 rounded-lg shadow-xl max-w-md w-full">
+        <div className="flex items-center mb-6">
+          <BCCLCircleLogo size={56} />
+          <div className="ml-4">
+            <h1 className="text-2xl font-bold text-blue-900">Bharat Coking Coal Limited</h1>
+            <p className="text-gray-600 font-semibold">Employee Management System</p>
+          </div>
+        </div>
+        <input type="email" placeholder="Email" value={email}
+          onChange={e => setEmail(e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-600" aria-label="Email"/>
+        <input type="password" placeholder="Password / Name" value={password}
+          onChange={e => setPassword(e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-600" aria-label="Password or Name"/>
+        {error && <p className="text-red-600 mb-4" role="alert">{error}</p>}
+        <button onClick={handleLogin}
+          className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-md text-lg font-semibold" aria-label="Login button">
+          Login
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Sidebar({ tab, setTab, user, onLogout }) {
+  const isAdmin = user.role === "admin";
+  const menuItems = [
+    { id: "dashboard", label: "Dashboard", icon: "🏠" },
+    ...(isAdmin ? [{ id: "employees", label: "Employees", icon: "👥" }] : []),
+    { id: "grievances", label: "Grievances", icon: "📝" },
+    { id: "notices", label: "Notices", icon: "📣" },
+    { id: "contacts", label: "Contacts", icon: "📞" }
+  ];
+  return (
+    <aside className="w-72 bg-blue-900 text-white flex flex-col h-full" role="navigation" aria-label="Main menu">
+      <div className="p-6 flex flex-col items-center border-b border-blue-800">
+        <BCCLCircleLogo size={64} />
+        <h2 className="text-lg font-bold mt-2">BCCL EMS</h2>
+      </div>
+      <nav className="flex-1">
+        {menuItems.map(item => (
+          <button key={item.id} onClick={() => setTab(item.id)}
+            aria-current={tab === item.id ? "page" : undefined}
+            className={`w-full flex items-center gap-3 px-6 py-3 hover:bg-blue-800 ${
+              tab === item.id ? "bg-blue-700 font-semibold" : ""}`}>
+            <span aria-hidden="true">{item.icon}</span> {item.label}
+          </button>
+        ))}
+      </nav>
+      <div className="p-6 border-t border-blue-800">
+        <button onClick={onLogout} className="w-full py-2 bg-red-600 rounded hover:bg-red-700" aria-label="Logout button">
+          Logout
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function App() {
+  const admin = { email: "sourav.kumar@bccl.in", password: "Admin@123" };
+  const [user, setUser] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [grievances, setGrievances] = useState([]);
+  const [tab, setTab] = useState("dashboard");
+
+  // Load employees for login
+  useEffect(() => {
+    db.collection("employees").get().then(snapshot => {
+      setEmployees(snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
+    });
+  }, []);
+
+  if (!user) return <Login onLogin={setUser} employees={employees} admin={admin} />;
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
+      <div className="flex flex-col flex-grow">
+        <HeaderBar user={user} />
+        <main className="flex-grow overflow-auto bg-gray-50">
+          {tab === "dashboard" && <Dashboard employees={employees} grievances={grievances} />}
+          {tab === "employees" && <Employees employees={employees} setEmployees={setEmployees} user={user} />}
+          {tab === "grievances" && <Grievances user={user} grievances={grievances} setGrievances={setGrievances} />}
+          {tab === "notices" && <Notices user={user} />}
+          {tab === "contacts" && <Contacts />}
+        </main>
+        <Footer />
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
 </html>
