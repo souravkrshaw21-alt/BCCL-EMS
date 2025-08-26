@@ -43,10 +43,13 @@ const db = firebase.firestore();
 // --- LOGO ---
 function BCCLCircleLogo({ size = 64 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-label="BCCL Logo" role="img">
-      <circle cx="32" cy="32" r="30" stroke="black" strokeWidth="3" fill="white" />
-      <text x="32" y="38" textAnchor="middle" fontSize="22" fontWeight="bold" fill="black" fontFamily="sans-serif">BCCL</text>
-    </svg>
+    <img
+      src="https://i.postimg.cc/PfBSkPDN/14-My-Dd-H1-400x400.jpg"
+      alt="BCCL Logo"
+      width={size}
+      height={size}
+      style={{ borderRadius: "50%" }}
+    />
   );
 }
 
