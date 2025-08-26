@@ -56,3 +56,6 @@ The project is built using **React (via CDN + Babel)**, **Tailwind CSS**, and **
 ```bash
 git clone https://github.com/your-username/BCCL-EMS.git
 cd BCCL-EMS
+
+## 🌐 Live Demo
+Try it here: [BCCL-EMS Live](https://souravkrshaw21-alt.github.io/BCCL-EMS/)
